@@ -8,6 +8,7 @@ from app.email_service import send_reset_email
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+DUMMY_PASSWORD_HASH = hash_password("dummy-password")
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -24,13 +25,10 @@ def login_page(request: Request):
 @router.post("/login", response_class=HTMLResponse)
 def login(request: Request, email: str = Form(...), password: str = Form(...)):
     user = run_query("SELECT * FROM users WHERE email=%s", (email,), fetchone=True)
-    if not user:
+    stored_hash = user["password_hash"] if user else DUMMY_PASSWORD_HASH
+    if not verify_password(password, stored_hash) or not user:
         return templates.TemplateResponse(
-            "login.html", {"request": request, "error": "No account found with that email."}
-        )
-    if not verify_password(password, user["password_hash"]):
-        return templates.TemplateResponse(
-            "login.html", {"request": request, "error": "Invalid password for this account."}
+            "login.html", {"request": request, "error": "Invalid email or password."}
         )
 
     token = create_session(user["id"])
