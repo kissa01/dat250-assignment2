@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from app.database import run_query
@@ -45,4 +45,8 @@ def grade_detail(request: Request, grade_id: int):
         (grade_id,),
         fetchone=True,
     )
+    if not grade:
+        raise HTTPException(status_code=404)
+    if grade["student_id"] != user["id"] and user["role"] not in ["admin", "teacher", "ta"]:
+        raise HTTPException(status_code=403)
     return templates.TemplateResponse("grade_detail.html", {"request": request, "user": user, "grade": grade})
