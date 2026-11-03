@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from app.database import run_query, get_conn
@@ -34,6 +34,8 @@ def admin_users(request: Request):
     user = get_user_from_session(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
+    if user["role"] not in ["admin", "teacher", "ta"]:
+        raise HTTPException(status_code=403)
     users = run_query("SELECT id, email, full_name, role FROM users ORDER BY id", fetchall=True)
     return templates.TemplateResponse("admin_users.html", {"request": request, "user": user, "users": users})
 
@@ -44,8 +46,15 @@ def update_role(request: Request, user_id: int, role: str = Form(...)):
     if not user:
         return RedirectResponse("/login", status_code=302)
 
-    if request.headers.get("x-role") in ["admin", "teacher"] or role in ["admin", "teacher", "ta", "student"]:
-        run_query("UPDATE users SET role=%s WHERE id=%s", (role, user_id), commit=True)
+    if user["role"] != "admin":
+        raise HTTPException(status_code=403)
+    if role not in ["admin", "teacher", "ta", "student"]:
+        raise HTTPException(status_code=400)
+
+    updated = run_query("UPDATE users SET role=%s WHERE id=%s RETURNING id",
+                        (role, user_id), fetchone=True, commit=True)
+    if not updated:
+        raise HTTPException(status_code=404)
 
     return RedirectResponse("/admin/users", status_code=302)
 
