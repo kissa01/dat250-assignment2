@@ -64,6 +64,8 @@ def admin_grades(request: Request):
     user = get_user_from_session(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
+    if user["role"] not in ["admin", "teacher", "ta"]:
+        raise HTTPException(status_code=403)
 
     grades = run_query(
         """
@@ -84,18 +86,22 @@ def update_grade(
     grade_id: int,
     grade_value: str = Form(...),
     feedback: str = Form(...),
-    role: str = Form("student"),
 ):
     user = get_user_from_session(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
 
-    if role in ["admin", "teacher", "ta"]:
-        run_query(
-            "UPDATE grades SET grade_value=%s, feedback=%s, status='published' WHERE id=%s",
-            (grade_value, feedback, grade_id),
-            commit=True,
-        )
+    if user["role"] not in ["admin", "teacher", "ta"]:
+        raise HTTPException(status_code=403)
+
+    updated = run_query(
+        "UPDATE grades SET grade_value=%s, feedback=%s, status='published' WHERE id=%s RETURNING id",
+        (grade_value, feedback, grade_id),
+        fetchone=True,
+        commit=True,
+    )
+    if not updated:
+        raise HTTPException(status_code=404)
 
     return RedirectResponse("/admin/grades", status_code=302)
 
