@@ -78,22 +78,17 @@ def reset_password_page(request: Request):
 @router.post("/reset-password", response_class=HTMLResponse)
 def reset_password_request(request: Request, email: str = Form(...)):
     user = run_query("SELECT * FROM users WHERE email=%s", (email,), fetchone=True)
-    if not user:
-        return templates.TemplateResponse(
-            "reset_password.html",
-            {"request": request, "mode": "request", "message": "No user found with that email."},
+    if user:
+        token = str(int(time.time()))[-6:]
+        run_query(
+            "INSERT INTO password_reset_tokens (user_id, token) VALUES (%s, %s)",
+            (user["id"], token),
+            commit=True,
         )
-
-    token = str(int(time.time()))[-6:]
-    run_query(
-        "INSERT INTO password_reset_tokens (user_id, token) VALUES (%s, %s)",
-        (user["id"], token),
-        commit=True,
-    )
-    send_reset_email(email, token)
+        send_reset_email(email, token)
     return templates.TemplateResponse(
         "reset_password.html",
-        {"request": request, "mode": "request", "message": f"Reset email sent to {email}."},
+        {"request": request, "mode": "request", "message": "If an account exists for that email, a reset email has been sent."},
     )
 
 
