@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
-from app.database import run_query, get_conn
+from app.database import run_query
 from app.auth import get_user_from_session
 
 router = APIRouter()
@@ -112,15 +112,15 @@ def search_users(request: Request, q: str = ""):
     if not user:
         return RedirectResponse("/login", status_code=302)
 
-    sql = f"SELECT id, email, full_name, role FROM users WHERE email ILIKE '%{q}%' OR full_name ILIKE '%{q}%'"
-    conn = get_conn()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(sql)
-            rows = cur.fetchall()
-            cols = [d[0] for d in cur.description]
-            users = [dict(zip(cols, r)) for r in rows]
-    finally:
-        conn.close()
+    if user["role"] not in ["admin", "teacher", "ta"]:
+        raise HTTPException(status_code=403)
+
+    pattern = f"%{q}%"
+    users = run_query(
+        "SELECT id, email, full_name, role FROM users "
+        "WHERE email ILIKE %s OR full_name ILIKE %s ORDER BY id",
+        (pattern, pattern),
+        fetchall=True,
+    )
 
     return templates.TemplateResponse("admin_users.html", {"request": request, "user": user, "users": users, "q": q})
