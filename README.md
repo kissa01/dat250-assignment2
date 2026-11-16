@@ -53,3 +53,5 @@ The `curl` commands and results are in section 5 of the report. Check stored val
 ```bash
 docker compose exec db psql -U dat250 -d dat250 -c "SELECT id, email, role FROM users"
 ```
+
+Group: Kristian Bruvik Leine (290625), Kyrre Elias Bjørkli (283466)
