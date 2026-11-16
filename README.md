@@ -1,111 +1,55 @@
-# DAT250 SecureApp — UiS Student Project Portal
+# DAT250 SecureApp - Assignment 2
 
-## 1. Purpose
-This repository contains a local-only lab web application for DAT250 Information and Software Security. It is designed for safe classroom use on your own machine.
+Our fixed version of the DAT250 student app (FastAPI, PostgreSQL, Nginx, MailHog, phpPgAdmin). Five vulnerabilities from Assignment 1 are fixed. The report is in [docs/RAPPORT.pdf](docs/RAPPORT.pdf). The original app is commit `c089832` of https://github.com/ocatak/UiS-Vulnerable-Student-App.
 
-## 2. Required tools
-- Docker Desktop
-- Git
-- A web browser
-- VS Code (optional)
+Run it locally only. All ports are bound to `127.0.0.1`.
 
-## 3. Quick start
-```bash
-git clone <repo>
-cd dat250-secureapp
-docker compose down -v
-docker compose up --build
-```
+## Run
 
-## 4. URLs
-- App: [http://localhost:18181](http://localhost:18181)
-- MailHog inbox: [http://localhost:8025](http://localhost:8025)
-- Optional database admin UI: [http://localhost:8081](http://localhost:8081), if enabled
-- API docs (if available in this lab build): [http://localhost:18181/docs](http://localhost:18181/docs)
-
-## Running the app
+Needs Docker Desktop.
 
 ```bash
-docker compose down -v
-docker compose up --build
+git clone https://github.com/kissa01/dat250-assignment2.git
+cd dat250-assignment2
+docker compose up --build -d --wait
+docker compose down
 ```
 
-Main URLs:
-- Main app: `http://localhost:18181`
-- MailHog: `http://localhost:8025`
-- Optional database admin UI: `http://localhost:8081`, if enabled
+`docker compose down -v` also resets the database.
 
-If phpPgAdmin is enabled, use:
-- Server/Host: `db`
-- Port: `5432`
-- Database: `dat250`
-- Username: `dat250`
-- Password: `dat250`
+| Service | URL |
+| --- | --- |
+| App | http://localhost:18181 |
+| MailHog | http://localhost:8025 |
+| phpPgAdmin (host `db`, user/password `dat250`) | http://localhost:8081 |
 
-## 5. Test users
-Use these accounts in the local lab environment:
+## Test accounts
 
-- admin@dat250.local / Admin123
-- teacher@dat250.local / Teacher123
-- ta@dat250.local / TA123
-- alice@student.uis.no / Alice123
-- bob@student.uis.no / Bob123
-- charlie@student.uis.no / Charlie123
+| Role | Email | Password |
+| --- | --- | --- |
+| admin | admin@dat250.local | Admin123 |
+| teacher | teacher@dat250.local | Teacher123 |
+| TA | ta@dat250.local | TA123 |
+| student | alice@student.uis.no | Alice123 |
+| student | bob@student.uis.no | Bob123 |
+| student | charlie@student.uis.no | Charlie123 |
 
-## 6. Resetting the lab
+## Fixed
+
+| ID | Vulnerability | Where |
+| --- | --- | --- |
+| F01 | Account enumeration | `auth_routes.py` |
+| F02 | Role escalation | `profile_routes.py`, `admin_routes.py` |
+| F04 | Unauthorized grade read and write | `grade_routes.py`, `admin_routes.py` |
+| F05 | SQL injection in admin search | `admin_routes.py` |
+| F07 | Stored XSS in messages | `dashboard.html`, `messages.html`, `message_detail.html` |
+
+Other vulnerabilities (for example SSRF and cookie flags) are not fixed.
+
+## Testing
+
+The `curl` commands and results are in section 5 of the report. Check stored values with:
+
 ```bash
-docker compose down -v
-docker compose up --build
+docker compose exec db psql -U dat250 -d dat250 -c "SELECT id, email, role FROM users"
 ```
-
-Or use helper scripts (run from this project folder):
-- macOS/Linux: `./dat250.sh reset` — wipes DB volumes and starts again (foreground).
-- macOS/Linux: `./dat250.sh rebuild` — pulls images, rebuilds the backend image without cache, recreates containers in the background (keeps DB volume).
-- Windows PowerShell: `.\dat250.ps1 reset` or `.\dat250.ps1 rebuild` — same meanings as above.
-
-## 7. Ethical rules
-- Use this lab only on your own local machine.
-- Only test your own DAT250 lab instance.
-- Do not test, scan, or attack UiS systems or any public system.
-- Do not scan public IP addresses or other students' machines.
-- Do not deploy this application publicly.
-
-Students may use external course-approved tools (for example browser DevTools and interception proxies) as required by the course assignments.
-
-## Running with Kali Linux
-
-### Mode A: App and tools on the same machine
-
-Use:
-`http://localhost:18181`
-
-### Mode B: App on physical laptop, Kali in VM
-
-- Keep the app running on the host laptop with Docker.
-- Find the host IP address reachable from Kali.
-- Try the host-only adapter IP, bridged adapter IP, or default gateway depending on virtualization mode.
-- Open from Kali:
-  `http://<HOST-IP>:18181`
-
-### Mode C: App in one VM, Kali in another VM
-
-- Put both VMs on the same virtual network.
-- Bridged or host-only networking is usually easiest.
-- Start Docker inside the target VM.
-- Find the target VM IP:
-  `ip -4 addr`
-- From Kali, open:
-  `http://<TARGET-VM-IP>:18181`
-
-## 8. Troubleshooting
-- Docker not running: start Docker Desktop first.
-- Port already in use: stop other services on 18181/8025/5432.
-- App not updated: run `docker compose down -v` and rebuild.
-- Database issues: use the reset command to recreate data.
-
-## 9. What students submit
-- Security test plan
-- Findings with evidence
-- Root cause explanation
-- Code/config fix for selected issues
-- Retest evidence
